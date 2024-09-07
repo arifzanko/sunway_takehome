@@ -7,10 +7,11 @@ import time
 
 model = YOLO('yolov8s.pt')
 
+# Create object
 cap = cv2.VideoCapture('highway.mp4')
-# cap = cv2.VideoCapture('highway_mini.mp4')
 
-class_list = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush']
+# Defines the list of object classes YOLO will detect
+class_list = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench']
 
 count = 0
 tracker = Tracker()
@@ -27,28 +28,43 @@ offset = 6
 if not os.path.exists('detected_frames'):
     os.makedirs('detected_frames')
 
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-out = cv2.VideoWriter('output.avi', fourcc, 20.0, (1020, 500))
+# Initializes a VideoWriter object to save the processed video
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+out = cv2.VideoWriter('output.mp4', fourcc, 20.0, (1020, 500))
 
 while True:
+    # Reads a single frame from the video capture object
+    # ret is a boolean value indicating whether the frame was successfully read
     ret, frame = cap.read()
     if not ret:
         break
+
+    # Use to save each frame image
     count += 1
+
+    # Resize frame
     frame = cv2.resize(frame, (1020, 500))
 
     results = model.predict(frame)
     boxes = results[0].boxes.data.detach().cpu().numpy()
+
+    # Converts the boxes Numpy array into a Pandas Dataframe
     px = pd.DataFrame(boxes).astype("float")
     
+    # Storesbounding boxes of detected objects
     list_of_bboxes = []
 
+    # Iterates each rows
     for index, row in px.iterrows():
+        # Extract bounding box coordinates and class id
         x1, y1, x2, y2, _, class_id = row
+
+        # Convert class id to class name refering from class list
         class_name = class_list[int(class_id)]
-        if 'car' in class_name:
+        if 'car' in class_name or 'truck' in class_name:
             list_of_bboxes.append([int(x1), int(y1), int(x2), int(y2)])
     
+    print(list_of_bboxes)
     bbox_id = tracker.update(list_of_bboxes)
 
     for bbox in bbox_id:

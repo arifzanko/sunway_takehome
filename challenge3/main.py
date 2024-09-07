@@ -12,14 +12,21 @@ import streamlit as st
 import os
 import time
 
+# Models
 EMBEDDING = "mistral"
+LOCAL_MODEL = "llama3"
 
+# Store uploaded PDFs
 if not os.path.exists('files'):
     os.mkdir('files')
 
+# Store vector store data
 if not os.path.exists('data'):
     os.mkdir('data')
 
+# Initialize session state - store information across different user interactions during lifetime of a session
+
+# Initialize it with a default template for the chatbot
 if 'template' not in st.session_state:
     st.session_state.template = """You are a knowledgeable chatbot, here to help with questions of the user. Your tone should be professional and informative.
 
@@ -28,38 +35,46 @@ if 'template' not in st.session_state:
 
     User: {question}
     Chatbot:"""
+
+# that uses 'history', 'context', and 'question' as input variables
 if 'prompt' not in st.session_state:
     st.session_state.prompt = PromptTemplate(
         input_variables=["history", "context", "question"],
-        template=st.session_state.template,
-    )
+        template=st.session_state.template)
+
+# to store conversation history and return it during interactions
 if 'memory' not in st.session_state:
     st.session_state.memory = ConversationBufferMemory(
         memory_key="history",
         return_messages=True,
         input_key="question")
+
+# 'embedding_function' uses OllamaEmbeddings to embed the data and persist it in the 'data' directory  
 if 'vectorstore' not in st.session_state:
     st.session_state.vectorstore = Chroma(persist_directory='data',
                         embedding_function=OllamaEmbeddings(
-                            model=EMBEDDING)
-                        )
+                            model=EMBEDDING))
+
+# using a local model with streaming output callbacks for real-time responses 
 if 'llm' not in st.session_state:
     st.session_state.llm = Ollama(base_url="http://localhost:11434",
-                model='llama3',
+                model=LOCAL_MODEL,
                 verbose=True,
                 callback_manager=CallbackManager(
-                    [StreamingStdOutCallbackHandler()]),
-                )
+                    [StreamingStdOutCallbackHandler()]))
 
-# Initialize session state
+# initialize it as an empty list to store user-chatbot conversation history
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
+
+# Set the title
 st.title("PDF Chatbot")
 
 # Upload a PDF file
 uploaded_file = st.file_uploader("Upload your PDF", type='pdf')
 
+# Iterates over the chat history stored in chat_history and displays each messages in Streamlit
 for message in st.session_state.chat_history:
     with st.chat_message(message["role"]):
         st.markdown(message["message"])
@@ -71,6 +86,8 @@ if uploaded_file is not None:
             f = open("files/"+uploaded_file.name+".pdf", "wb")
             f.write(bytes_data)
             f.close()
+
+            # Loads the PDF into memory
             loader = PyPDFLoader("files/"+uploaded_file.name+".pdf")
             data = loader.load()
 
@@ -82,15 +99,20 @@ if uploaded_file is not None:
             )
             all_splits = text_splitter.split_documents(data)
 
-            # Create and persist the vector store
+            # Create vector store
             st.session_state.vectorstore = Chroma.from_documents(
                 documents=all_splits,
                 embedding=OllamaEmbeddings(model=EMBEDDING)
             )
+
+            # Saves the vector store to data folder
             st.session_state.vectorstore.persist()
 
+    # Converts the Chroma vector store into retriever object
     st.session_state.retriever = st.session_state.vectorstore.as_retriever()
-    # Initialize the QA chain
+
+    # Initialize the QA chain - sets up process where the user query gets passed to a language model, 
+    # which retrieves relevent documents using a retriever and generates an answer
     if 'qa_chain' not in st.session_state:
         st.session_state.qa_chain = RetrievalQA.from_chain_type(
             llm=st.session_state.llm,

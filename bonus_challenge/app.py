@@ -1,3 +1,9 @@
+'''
+This code creates a simple web-based sentiment analysis app using Streamlit. 
+It allows users to input a sentence, preprocesses the text, sends it to a backend service for sentiment analysis, 
+and also provides feedback functionality to add the sentence to a dataset.
+'''
+
 import streamlit as st
 import requests
 import re

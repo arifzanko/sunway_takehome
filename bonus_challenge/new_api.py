@@ -1,3 +1,5 @@
+'''This FastAPI application provides endpoints for sentiment analysis and data collection.'''
+
 from fastapi import FastAPI
 from hf_sentiment import sentiment_analysis, collect_data
 from fastapi.responses import JSONResponse

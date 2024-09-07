@@ -1,3 +1,8 @@
+'''
+The code loads a dataset, splits it into training and test sets, trains a Decision Tree Classifier, and makes predictions on the test data.
+The accuracy of the model is calculated, and the trained model is saved to a file for future use.
+'''
+
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
